@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Data Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <style>
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .data-table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #e2e8f0;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        .data-table th {
+            background-color: #f8fafc;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .data-table tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        .data-table tr:hover {
+            background-color: #f1f5f9;
+        }
+        .dropzone {
+            border: 2px dashed #cbd5e0;
+            border-radius: 0.5rem;
+            transition: all 0.3s;
+        }
+        .dropzone.active {
+            border-color: #4299e1;
+            background-color: #ebf8ff;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-blue-600 mb-2">CSV Data Analyzer</h1>
+            <p class="text-gray-600">Upload your CSV file to generate frequency tables and cross-tabulations</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- File Upload Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-1">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Upload CSV File</h2>
+                
+                <div id="dropzone" class="dropzone p-8 mb-4 text-center cursor-pointer">
+                    <div class="flex flex-col items-center justify-center">
+                        <i class="fas fa-file-csv text-4xl text-blue-500 mb-3"></i>
+                        <p class="text-gray-600 mb-2">Drag & drop your CSV file here</p>
+                        <p class="text-sm text-gray-500">or</p>
+                        <button id="browseBtn" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition">
+                            Browse Files
+                        </button>
+                    </div>
+                    <input type="file" id="fileInput" class="hidden" accept=".csv">
+                </div>
+                
+                <div id="fileInfo" class="hidden bg-blue-50 p-3 rounded-md mb-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-file text-blue-500 mr-2"></i>
+                        <span id="fileName" class="font-medium"></span>
+                        <button id="clearFile" class="ml-auto text-red-500 hover:text-red-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="columnSelection" class="hidden">
+                    <h3 class="font-medium text-gray-700 mb-2">Select Columns:</h3>
+                    <div id="columnCheckboxes" class="space-y-2 max-h-60 overflow-y-auto mb-4"></div>
+                    
+                    <div class="flex space-x-2">
+                        <button id="generateFreq" class="flex-1 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition">
+                            <i class="fas fa-chart-bar mr-2"></i> Frequency
+                        </button>
+                        <button id="generateCross" class="flex-1 px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition">
+                            <i class="fas fa-table mr-2"></i> Cross Tab
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Analysis Results</h2>
+                
+                <div id="resultsContainer">
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fas fa-chart-pie text-5xl mb-4"></i>
+                        <p>Upload a CSV file to begin analysis</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('fileInput');
+            const browseBtn = document.getElementById('browseBtn');
+            const fileInfo = document.getElementById('fileInfo');
+            const fileName = document.getElementById('fileName');
+            const clearFile = document.getElementById('clearFile');
+            const columnSelection = document.getElementById('columnSelection');
+            const columnCheckboxes = document.getElementById('columnCheckboxes');
+            const generateFreq = document.getElementById('generateFreq');
+            const generateCross = document.getElementById('generateCross');
+            const resultsContainer = document.getElementById('resultsContainer');
+            
+            let parsedData = null;
+            let columns = [];
+
+            // Handle drag and drop events
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropzone.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight() {
+                dropzone.classList.add('active');
+            }
+
+            function unhighlight() {
+                dropzone.classList.remove('active');
+            }
+
+            dropzone.addEventListener('drop', handleDrop, false);
+            browseBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFiles);
+            clearFile.addEventListener('click', resetFile);
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length && files[0].name.endsWith('.csv')) {
+                    fileInput.files = files;
+                    handleFiles();
+                }
+            }
+
+            function handleFiles() {
+                const file = fileInput.files[0];
+                if (!file) return;
+
+                fileName.textContent = file.name;
+                fileInfo.classList.remove('hidden');
+                dropzone.classList.add('hidden');
+
+                Papa.parse(file, {
+                    header: true,
+                    complete: function(results) {
+                        parsedData = results.data;
+                        columns = results.meta.fields;
+                        showColumnSelection();
+                    },
+                    error: function(error) {
+                        alert('Error parsing CSV: ' + error.message);
+                        resetFile();
+                    }
+                });
+            }
+
+            function showColumnSelection() {
+                columnCheckboxes.innerHTML = '';
+                
+                columns.forEach(column => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = `col-${column}`;
+                    checkbox.value = column;
+                    checkbox.className = 'mr-2 h-4 w-4 text-blue-600 rounded';
+                    
+                    const label = document.createElement('label');
+                    label.htmlFor = `col-${column}`;
+                    label.textContent = column;
+                    label.className = 'text-gray-700';
+                    
+                    div.appendChild(checkbox);
+                    div.appendChild(label);
+                    columnCheckboxes.appendChild(div);
+                });
+                
+                columnSelection.classList.remove('hidden');
+            }
+
+            function resetFile() {
+                fileInput.value = '';
+                fileInfo.classList.add('hidden');
+                dropzone.classList.remove('hidden');
+                columnSelection.classList.add('hidden');
+                resultsContainer.innerHTML = `
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fas fa-chart-pie text-5xl mb-4"></i>
+                        <p>Upload a CSV file to begin analysis</p>
+                    </div>
+                `;
+                parsedData = null;
+                columns = [];
+            }
+
+            generateFreq.addEventListener('click', generateFrequencyTable);
+            generateCross.addEventListener('click', generateCrossTabTable);
+
+            function generateFrequencyTable() {
+                const selectedColumns = Array.from(document.querySelectorAll('#columnCheckboxes input:checked')).map(el => el.value);
+                
+                if (selectedColumns.length === 0) {
+                    alert('Please select at least one column');
+                    return;
+                }
+                
+                let html = '<div class="space-y-8">';
+                
+                selectedColumns.forEach(col => {
+                    const freq = calculateFrequency(col);
+                    
+                    html += `
+                        <div class="mb-6">
+                            <h3 class="text-lg font-medium text-gray-800 mb-3">Frequency Table for "${col}"</h3>
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Value</th>
+                                            <th>Frequency</th>
+                                            <th>Percentage</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+                    
+                    let total = 0;
+                    for (const key in freq) {
+                        total += freq[key];
+                    }
+                    
+                    for (const key in freq) {
+                        const percentage = ((freq[key] / total) * 100).toFixed(2);
+                        html += `
+                            <tr>
+                                <td>${key}</td>
+                                <td>${freq[key]}</td>
+                                <td>${percentage}%</td>
+                            </tr>
+                        `;
+                    }
+                    
+                    html += `
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="font-semibold">
+                                            <td>Total</td>
+                                            <td>${total}</td>
+                                            <td>100%</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                resultsContainer.innerHTML = html;
+            }
+
+            function calculateFrequency(column) {
+                const frequency = {};
+                
+                parsedData.forEach(row => {
+                    const value = row[column] || 'N/A';
+                    if (frequency[value]) {
+                        frequency[value]++;
+                    } else {
+                        frequency[value] = 1;
+                    }
+                });
+                
+                return frequency;
+            }
+
+            function generateCrossTabTable() {
+                const selectedColumns = Array.from(document.querySelectorAll('#columnCheckboxes input:checked')).map(el => el.value);
+                
+                if (selectedColumns.length < 2) {
+                    alert('Please select at least two columns for cross-tabulation');
+                    return;
+                }
+                
+                const rowVar = selectedColumns[0];
+                const colVar = selectedColumns[1];
+                
+                const crossTab = calculateCrossTab(rowVar, colVar);
+                
+                let html = `
+                    <div class="mb-6">
+                        <h3 class="text-lg font-medium text-gray-800 mb-3">Cross Tabulation: "${rowVar}" vs "${colVar}"</h3>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>${rowVar} / ${colVar}</th>
+                `;
+                
+                // Column headers
+                for (const col in crossTab.columns) {
+                    html += `<th>${col}</th>`;
+                }
+                html += `<th>Total</th></tr></thead><tbody>`;
+                
+                // Rows
+                for (const row in crossTab.rows) {
+                    html += `<tr><td>${row}</td>`;
+                    
+                    let rowTotal = 0;
+                    for (const col in crossTab.columns) {
+                        const count = crossTab.matrix[row]?.[col] || 0;
+                        html += `<td>${count}</td>`;
+                        rowTotal += count;
+                    }
+                    
+                    html += `<td class="font-semibold">${rowTotal}</td></tr>`;
+                }
+                
+                // Column totals
+                html += `<tr><td class="font-semibold">Total</td>`;
+                let grandTotal = 0;
+                for (const col in crossTab.columns) {
+                    html += `<td class="font-semibold">${crossTab.columns[col]}</td>`;
+                    grandTotal += crossTab.columns[col];
+                }
+                html += `<td class="font-semibold">${grandTotal}</td></tr>`;
+                
+                html += `</tbody></table></div></div>`;
+                
+                // Add percentage table
+                html += `
+                    <div class="mb-6">
+                        <h3 class="text-lg font-medium text-gray-800 mb-3">Percentage Distribution</h3>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>${rowVar} / ${colVar}</th>
+                `;
+                
+                // Column headers
+                for (const col in crossTab.columns) {
+                    html += `<th>${col}</th>`;
+                }
+                html += `<th>Total</th></tr></thead><tbody>`;
+                
+                // Rows with percentages
+                for (const row in crossTab.rows) {
+                    html += `<tr><td>${row}</td>`;
+                    
+                    let rowTotal = crossTab.rows[row];
+                    for (const col in crossTab.columns) {
+                        const count = crossTab.matrix[row]?.[col] || 0;
+                        const percentage = rowTotal > 0 ? ((count / rowTotal) * 100).toFixed(1) + '%' : '0%';
+                        html += `<td>${percentage}</td>`;
+                    }
+                    
+                    html += `<td class="font-semibold">100%</td></tr>`;
+                }
+                
+                html += `</tbody></table></div></div>`;
+                
+                resultsContainer.innerHTML = html;
+            }
+
+            function calculateCrossTab(rowVar, colVar) {
+                const result = {
+                    matrix: {},
+                    rows: {},
+                    columns: {}
+                };
+                
+                parsedData.forEach(row => {
+                    const rowValue = row[rowVar] || 'N/A';
+                    const colValue = row[colVar] || 'N/A';
+                    
+                    // Initialize if not exists
+                    if (!result.matrix[rowValue]) {
+                        result.matrix[rowValue] = {};
+                    }
+                    
+                    if (!result.matrix[rowValue][colValue]) {
+                        result.matrix[rowValue][colValue] = 0;
+                    }
+                    
+                    // Increment counts
+                    result.matrix[rowValue][colValue]++;
+                    
+                    // Update row totals
+                    if (result.rows[rowValue]) {
+                        result.rows[rowValue]++;
+                    } else {
+                        result.rows[rowValue] = 1;
+                    }
+                    
+                    // Update column totals
+                    if (result.columns[colValue]) {
+                        result.columns[colValue]++;
+                    } else {
+                        result.columns[colValue] = 1;
+                    }
+                });
+                
+                return result;
+            }
+        });
+    </script>
+</body>
+                          </html>
