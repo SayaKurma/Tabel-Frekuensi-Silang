@@ -1,107 +1,221 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV Data Analyzer</title>
+    <title>Analisis Data CSV - SPSS Style</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <style>
+        :root {
+            --spss-blue: #1a5891;
+            --spss-light-blue: #d1e2f2;
+            --spss-gray: #e6e6e6;
+            --spss-dark-gray: #595959;
+            --spss-header: #f0f0f0;
+            --spss-border: #acacac;
+            --spss-highlight: #e4effb;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        .spss-header {
+            background-color: var(--spss-blue);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-bottom: 3px solid #0c3b66;
+        }
+        
+        .spss-panel {
+            background-color: white;
+            border: 1px solid var(--spss-border);
+            border-radius: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .spss-panel-header {
+            background-color: var(--spss-header);
+            border-bottom: 1px solid var(--spss-border);
+            padding: 0.75rem 1rem;
+            font-weight: bold;
+            color: var(--spss-dark-gray);
+        }
+        
+        .spss-button {
+            background-color: var(--spss-blue);
+            color: white;
+            border: 1px solid #0c3b66;
+            border-radius: 2px;
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .spss-button:hover {
+            background-color: #0c3b66;
+        }
+        
+        .spss-button-secondary {
+            background-color: var(--spss-gray);
+            color: var(--spss-dark-gray);
+            border: 1px solid var(--spss-border);
+        }
+        
+        .spss-button-secondary:hover {
+            background-color: #d1d1d1;
+        }
+        
         .table-container {
             max-height: 500px;
             overflow-y: auto;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid var(--spss-border);
         }
+        
         .data-table {
             border-collapse: collapse;
             width: 100%;
         }
+        
         .data-table th, .data-table td {
-            border: 1px solid #e2e8f0;
-            padding: 8px 12px;
+            border: 1px solid var(--spss-border);
+            padding: 6px 10px;
             text-align: left;
         }
+        
         .data-table th {
-            background-color: #f8fafc;
+            background-color: var(--spss-header);
+            color: var(--spss-dark-gray);
+            font-weight: bold;
             position: sticky;
             top: 0;
             z-index: 10;
         }
+        
         .data-table tr:nth-child(even) {
-            background-color: #f8fafc;
+            background-color: var(--spss-gray);
         }
+        
         .data-table tr:hover {
-            background-color: #f1f5f9;
+            background-color: var(--spss-highlight);
         }
+        
+        .data-table tfoot tr {
+            background-color: var(--spss-header);
+            font-weight: bold;
+        }
+        
         .dropzone {
-            border: 2px dashed #cbd5e0;
-            border-radius: 0.5rem;
+            border: 1px solid var(--spss-border);
+            border-radius: 2px;
+            background-color: var(--spss-gray);
             transition: all 0.3s;
         }
+        
         .dropzone.active {
-            border-color: #4299e1;
-            background-color: #ebf8ff;
+            border-color: var(--spss-blue);
+            background-color: var(--spss-light-blue);
+        }
+        
+        .spss-checkbox {
+            margin-right: 8px;
+        }
+        
+        .spss-checkbox-label {
+            font-size: 0.875rem;
+            color: var(--spss-dark-gray);
+        }
+        
+        .spss-results-tab {
+            background-color: var(--spss-header);
+            border: 1px solid var(--spss-border);
+            border-bottom: none;
+            padding: 0.5rem 1rem;
+            font-weight: bold;
+            color: var(--spss-dark-gray);
+            display: inline-block;
+        }
+        
+        .spss-results-content {
+            border: 1px solid var(--spss-border);
+            background-color: white;
+            padding: 1rem;
+        }
+
+        .spss-file-info {
+            background-color: var(--spss-light-blue);
+            border: 1px solid var(--spss-border);
+            padding: 0.5rem 1rem;
         }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <header class="mb-8 text-center">
-            <h1 class="text-3xl font-bold text-blue-600 mb-2">CSV Data Analyzer</h1>
-            <p class="text-gray-600">Upload your CSV file to generate frequency tables and cross-tabulations</p>
-        </header>
+<body>
+    <div class="spss-header mb-4">
+        <h1 class="text-2xl font-bold">Analisis Data</h1>
+    </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- File Upload Section -->
-            <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-1">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4">Upload CSV File</h2>
-                
-                <div id="dropzone" class="dropzone p-8 mb-4 text-center cursor-pointer">
-                    <div class="flex flex-col items-center justify-center">
-                        <i class="fas fa-file-csv text-4xl text-blue-500 mb-3"></i>
-                        <p class="text-gray-600 mb-2">Drag & drop your CSV file here</p>
-                        <p class="text-sm text-gray-500">or</p>
-                        <button id="browseBtn" class="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition">
-                            Browse Files
-                        </button>
+    <div class="container mx-auto px-4 py-4">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <!-- Panel Kiri (Navigator) -->
+            <div class="lg:col-span-1">
+                <div class="spss-panel mb-4">
+                    <div class="spss-panel-header">Data Input</div>
+                    <div class="p-4">
+                        <div id="dropzone" class="dropzone p-4 mb-4 text-center cursor-pointer">
+                            <div class="flex flex-col items-center justify-center">
+                                <i class="fas fa-file-csv text-3xl text-gray-600 mb-3"></i>
+                                <p class="text-sm text-gray-600 mb-2">Seret & lepas file CSV</p>
+                                <button id="browseBtn" class="spss-button mt-2">
+                                    Pilih File
+                                </button>
+                            </div>
+                            <input type="file" id="fileInput" class="hidden" accept=".csv">
+                        </div>
+                        
+                        <div id="fileInfo" class="hidden spss-file-info mb-4">
+                            <div class="flex items-center">
+                                <i class="fas fa-file text-blue-800 mr-2"></i>
+                                <span id="fileName" class="text-sm"></span>
+                                <button id="clearFile" class="ml-auto text-red-500 hover:text-red-700">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <input type="file" id="fileInput" class="hidden" accept=".csv">
                 </div>
-                
-                <div id="fileInfo" class="hidden bg-blue-50 p-3 rounded-md mb-4">
-                    <div class="flex items-center">
-                        <i class="fas fa-file text-blue-500 mr-2"></i>
-                        <span id="fileName" class="font-medium"></span>
-                        <button id="clearFile" class="ml-auto text-red-500 hover:text-red-700">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <div id="columnSelection" class="hidden">
-                    <h3 class="font-medium text-gray-700 mb-2">Select Columns:</h3>
-                    <div id="columnCheckboxes" class="space-y-2 max-h-60 overflow-y-auto mb-4"></div>
-                    
-                    <div class="flex space-x-2">
-                        <button id="generateFreq" class="flex-1 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition">
-                            <i class="fas fa-chart-bar mr-2"></i> Frequency
-                        </button>
-                        <button id="generateCross" class="flex-1 px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition">
-                            <i class="fas fa-table mr-2"></i> Cross Tab
-                        </button>
+
+                <div id="columnSelection" class="hidden spss-panel">
+                    <div class="spss-panel-header">Variabel</div>
+                    <div class="p-4">
+                        <div id="columnCheckboxes" class="space-y-2 max-h-60 overflow-y-auto mb-4"></div>
+                        
+                        <div class="space-y-2">
+                            <button id="generateFreq" class="spss-button w-full mb-2">
+                                <i class="fas fa-chart-bar mr-2"></i> Frekuensi
+                            </button>
+                            <button id="generateCross" class="spss-button w-full">
+                                <i class="fas fa-table mr-2"></i> Tabulasi Silang
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Results Section -->
-            <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4">Analysis Results</h2>
-                
-                <div id="resultsContainer">
-                    <div class="text-center py-12 text-gray-400">
-                        <i class="fas fa-chart-pie text-5xl mb-4"></i>
-                        <p>Upload a CSV file to begin analysis</p>
+            <!-- Panel Kanan (Output) -->
+            <div class="lg:col-span-3">
+                <div class="spss-panel">
+                    <div class="spss-results-tab">Output</div>
+                    <div class="spss-results-content">
+                        <div id="resultsContainer">
+                            <div class="text-center py-8 text-gray-500">
+                                <i class="fas fa-chart-pie text-4xl mb-4"></i>
+                                <p>Unggah file CSV untuk memulai analisis</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -125,7 +239,7 @@
             let parsedData = null;
             let columns = [];
 
-            // Handle drag and drop events
+            // Tangani peristiwa drag and drop
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                 dropzone.addEventListener(eventName, preventDefaults, false);
             });
@@ -181,7 +295,7 @@
                         showColumnSelection();
                     },
                     error: function(error) {
-                        alert('Error parsing CSV: ' + error.message);
+                        alert('Kesalahan saat memproses CSV: ' + error.message);
                         resetFile();
                     }
                 });
@@ -198,12 +312,12 @@
                     checkbox.type = 'checkbox';
                     checkbox.id = `col-${column}`;
                     checkbox.value = column;
-                    checkbox.className = 'mr-2 h-4 w-4 text-blue-600 rounded';
+                    checkbox.className = 'spss-checkbox';
                     
                     const label = document.createElement('label');
                     label.htmlFor = `col-${column}`;
                     label.textContent = column;
-                    label.className = 'text-gray-700';
+                    label.className = 'spss-checkbox-label';
                     
                     div.appendChild(checkbox);
                     div.appendChild(label);
@@ -219,9 +333,9 @@
                 dropzone.classList.remove('hidden');
                 columnSelection.classList.add('hidden');
                 resultsContainer.innerHTML = `
-                    <div class="text-center py-12 text-gray-400">
-                        <i class="fas fa-chart-pie text-5xl mb-4"></i>
-                        <p>Upload a CSV file to begin analysis</p>
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-chart-pie text-4xl mb-4"></i>
+                        <p>Unggah file CSV untuk memulai analisis</p>
                     </div>
                 `;
                 parsedData = null;
@@ -235,7 +349,7 @@
                 const selectedColumns = Array.from(document.querySelectorAll('#columnCheckboxes input:checked')).map(el => el.value);
                 
                 if (selectedColumns.length === 0) {
-                    alert('Please select at least one column');
+                    alert('Silakan pilih setidaknya satu kolom');
                     return;
                 }
                 
@@ -246,14 +360,14 @@
                     
                     html += `
                         <div class="mb-6">
-                            <h3 class="text-lg font-medium text-gray-800 mb-3">Frequency Table for "${col}"</h3>
+                            <div class="spss-panel-header text-base p-2">Frequencies: ${col}</div>
                             <div class="table-container">
                                 <table class="data-table">
                                     <thead>
                                         <tr>
-                                            <th>Value</th>
-                                            <th>Frequency</th>
-                                            <th>Percentage</th>
+                                            <th style="width: 40%;">${col}</th>
+                                            <th style="width: 30%;">Frequency</th>
+                                            <th style="width: 30%;">Percent</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -265,12 +379,12 @@
                     }
                     
                     for (const key in freq) {
-                        const percentage = ((freq[key] / total) * 100).toFixed(2);
+                        const percentage = ((freq[key] / total) * 100).toFixed(1);
                         html += `
                             <tr>
                                 <td>${key}</td>
                                 <td>${freq[key]}</td>
-                                <td>${percentage}%</td>
+                                <td>${percentage}</td>
                             </tr>
                         `;
                     }
@@ -278,10 +392,10 @@
                     html += `
                                     </tbody>
                                     <tfoot>
-                                        <tr class="font-semibold">
+                                        <tr>
                                             <td>Total</td>
                                             <td>${total}</td>
-                                            <td>100%</td>
+                                            <td>100.0</td>
                                         </tr>
                                     </tfoot>
                                 </table>
@@ -298,7 +412,7 @@
                 const frequency = {};
                 
                 parsedData.forEach(row => {
-                    const value = row[column] || 'N/A';
+                    const value = row[column] || 'Missing';
                     if (frequency[value]) {
                         frequency[value]++;
                     } else {
@@ -313,7 +427,7 @@
                 const selectedColumns = Array.from(document.querySelectorAll('#columnCheckboxes input:checked')).map(el => el.value);
                 
                 if (selectedColumns.length < 2) {
-                    alert('Please select at least two columns for cross-tabulation');
+                    alert('Silakan pilih setidaknya dua kolom untuk tabulasi silang');
                     return;
                 }
                 
@@ -324,21 +438,25 @@
                 
                 let html = `
                     <div class="mb-6">
-                        <h3 class="text-lg font-medium text-gray-800 mb-3">Cross Tabulation: "${rowVar}" vs "${colVar}"</h3>
+                        <div class="spss-panel-header text-base p-2">Crosstabulation: ${rowVar} * ${colVar}</div>
                         <div class="table-container">
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>${rowVar} / ${colVar}</th>
+                                        <th rowspan="2" style="vertical-align: bottom;">${rowVar}</th>
+                                        <th colspan="${Object.keys(crossTab.columns).length}" style="text-align: center;">${colVar}</th>
+                                        <th rowspan="2" style="vertical-align: bottom;">Total</th>
+                                    </tr>
+                                    <tr>
                 `;
                 
-                // Column headers
+                // Header kolom
                 for (const col in crossTab.columns) {
                     html += `<th>${col}</th>`;
                 }
-                html += `<th>Total</th></tr></thead><tbody>`;
+                html += `</tr></thead><tbody>`;
                 
-                // Rows
+                // Baris
                 for (const row in crossTab.rows) {
                     html += `<tr><td>${row}</td>`;
                     
@@ -349,49 +467,53 @@
                         rowTotal += count;
                     }
                     
-                    html += `<td class="font-semibold">${rowTotal}</td></tr>`;
+                    html += `<td>${rowTotal}</td></tr>`;
                 }
                 
-                // Column totals
-                html += `<tr><td class="font-semibold">Total</td>`;
+                // Total kolom
+                html += `<tr><td>Total</td>`;
                 let grandTotal = 0;
                 for (const col in crossTab.columns) {
-                    html += `<td class="font-semibold">${crossTab.columns[col]}</td>`;
+                    html += `<td>${crossTab.columns[col]}</td>`;
                     grandTotal += crossTab.columns[col];
                 }
-                html += `<td class="font-semibold">${grandTotal}</td></tr>`;
+                html += `<td>${grandTotal}</td></tr>`;
                 
                 html += `</tbody></table></div></div>`;
                 
-                // Add percentage table
+                // Tambah tabel persentase
                 html += `
                     <div class="mb-6">
-                        <h3 class="text-lg font-medium text-gray-800 mb-3">Percentage Distribution</h3>
+                        <div class="spss-panel-header text-base p-2">Row Percentages</div>
                         <div class="table-container">
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>${rowVar} / ${colVar}</th>
+                                        <th rowspan="2" style="vertical-align: bottom;">${rowVar}</th>
+                                        <th colspan="${Object.keys(crossTab.columns).length}" style="text-align: center;">${colVar}</th>
+                                        <th rowspan="2" style="vertical-align: bottom;">Total</th>
+                                    </tr>
+                                    <tr>
                 `;
                 
-                // Column headers
+                // Header kolom
                 for (const col in crossTab.columns) {
                     html += `<th>${col}</th>`;
                 }
-                html += `<th>Total</th></tr></thead><tbody>`;
+                html += `</tr></thead><tbody>`;
                 
-                // Rows with percentages
+                // Baris dengan persentase
                 for (const row in crossTab.rows) {
                     html += `<tr><td>${row}</td>`;
                     
                     let rowTotal = crossTab.rows[row];
                     for (const col in crossTab.columns) {
                         const count = crossTab.matrix[row]?.[col] || 0;
-                        const percentage = rowTotal > 0 ? ((count / rowTotal) * 100).toFixed(1) + '%' : '0%';
+                        const percentage = rowTotal > 0 ? ((count / rowTotal) * 100).toFixed(1) : '0.0';
                         html += `<td>${percentage}</td>`;
                     }
                     
-                    html += `<td class="font-semibold">100%</td></tr>`;
+                    html += `<td>100.0</td></tr>`;
                 }
                 
                 html += `</tbody></table></div></div>`;
@@ -407,10 +529,10 @@
                 };
                 
                 parsedData.forEach(row => {
-                    const rowValue = row[rowVar] || 'N/A';
-                    const colValue = row[colVar] || 'N/A';
+                    const rowValue = row[rowVar] || 'Missing';
+                    const colValue = row[colVar] || 'Missing';
                     
-                    // Initialize if not exists
+                    // Inisialisasi jika belum ada
                     if (!result.matrix[rowValue]) {
                         result.matrix[rowValue] = {};
                     }
@@ -419,17 +541,17 @@
                         result.matrix[rowValue][colValue] = 0;
                     }
                     
-                    // Increment counts
+                    // Tambah jumlah
                     result.matrix[rowValue][colValue]++;
                     
-                    // Update row totals
+                    // Perbarui total baris
                     if (result.rows[rowValue]) {
                         result.rows[rowValue]++;
                     } else {
                         result.rows[rowValue] = 1;
                     }
                     
-                    // Update column totals
+                    // Perbarui total kolom
                     if (result.columns[colValue]) {
                         result.columns[colValue]++;
                     } else {
@@ -442,4 +564,4 @@
         });
     </script>
 </body>
-                          </html>
+</html>
